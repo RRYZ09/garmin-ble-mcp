@@ -30,6 +30,15 @@ GarminウォッチからBluetoothLE経由でリアルタイム心拍数を取得
 
 ウォッチがBLEで心拍数をブロードキャストし始めます。セッションごとに1回行えばOKです。
 
+## トラブルシューティング
+
+| エラー | 原因 | 対処 |
+|--------|------|------|
+| `Garmin device not found. Make sure Bluetooth is on and the watch is nearby.` | BLE接続タイムアウト — ウォッチの電源オフ、圏外、またはBluetoothが無効 | Bluetoothをオンにしてウォッチを近づけ、再試行 |
+| `Device connected but no heart rate data received. Enable heart rate broadcast mode on the watch.` | ウォッチには接続できたが心拍データが届いていない | ウォッチで心拍転送モードを有効にする（上記「ウォッチの準備」参照） |
+
+どちらのエラーも、ツールが失敗する前にMCPログ通知（`warning`レベル）としてリアルタイムで送信されます。
+
 ## 仕組み
 
 - `get_realtime_heart_rate` — `gatttool` で接続し、Garmin独自のCCCD（ハンドル `0x0013`）と標準の心拍数Measurement CCCD（ハンドル `0x003b`）の両方に書き込んだ後、ハンドル `0x003a`（characteristic `0x2A37`）のHR通知を読み取ります。

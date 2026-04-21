@@ -32,6 +32,15 @@ Before connecting, enable **Heart Rate Broadcast** on the watch:
 
 The watch will start broadcasting heart rate over BLE. You only need to do this once per session.
 
+## Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Garmin device not found. Make sure Bluetooth is on and the watch is nearby.` | BLE connection timed out — watch is off, out of range, or Bluetooth is disabled | Turn on Bluetooth, bring the watch within range, and retry |
+| `Device connected but no heart rate data received. Enable heart rate broadcast mode on the watch.` | Watch is reachable but not sending HR data | Enable Heart Rate Broadcast on the watch (see Watch Setup above) |
+
+Both errors are also sent as MCP logging notifications (`warning` level) before the tool fails, so your MCP client can surface them in real time.
+
 ## How it works
 
 - `get_realtime_heart_rate` — connects via `gatttool`, writes to both Garmin's proprietary CCCD (handle `0x0013`) and the standard HR Measurement CCCD (handle `0x003b`), then reads HR notifications on handle `0x003a` (characteristic `0x2A37`).

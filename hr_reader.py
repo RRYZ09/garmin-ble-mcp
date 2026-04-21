@@ -59,7 +59,7 @@ def run(timeout_seconds=15, samples=3):
     send('connect')
     if not wait_for('Connection successful', timeout=12):
         proc.kill()
-        return None, 'Connection timed out'
+        return None, 'Garmin device not found. Make sure Bluetooth is on and the watch is nearby.'
 
     # Send both CCCD writes without waiting for responses
     send(f'char-write-req 0x{GARMIN_INIT_CCCD:04x} 0100')
@@ -92,7 +92,7 @@ def run(timeout_seconds=15, samples=3):
         proc.kill()
 
     if not readings:
-        return None, 'No heart rate data received'
+        return None, 'Device connected but no heart rate data received. Enable heart rate broadcast mode on the watch.'
 
     return {
         'device': device_name,

@@ -141,7 +141,11 @@ def run(duration_seconds=120):
     send('connect')
     if not wait_for('Connection successful', timeout=12):
         proc.kill()
-        return None, 'Connection timed out'
+        print(json.dumps({
+            'error_type': 'device_not_found',
+            'message': 'Garmin device not found. Make sure Bluetooth is on and the watch is nearby.',
+        }), file=sys.stderr, flush=True)
+        return None, 'Garmin device not found. Make sure Bluetooth is on and the watch is nearby.'
 
     send(f'char-write-req 0x{GARMIN_INIT_CCCD:04x} 0100')
     send(f'char-write-req 0x{HR_CCCD_HANDLE:04x} 0100')
@@ -150,6 +154,7 @@ def run(duration_seconds=120):
     hr_readings  = []   # fallback: (timestamp, hr_bpm)
     has_rr_data  = False
     deadline = time.time() + duration_seconds
+    first_data_deadline = time.time() + 10
     last_progress = time.time()
 
     while time.time() < deadline:
@@ -167,6 +172,8 @@ def run(duration_seconds=120):
         except queue.Empty:
             pass
         if proc.poll() is not None:
+            break
+        if not hr_readings and time.time() > first_data_deadline:
             break
 
         now = time.time()
@@ -189,7 +196,11 @@ def run(duration_seconds=120):
         proc.kill()
 
     if not hr_readings:
-        return None, 'No heart rate data received'
+        print(json.dumps({
+            'error_type': 'broadcast_not_active',
+            'message': 'Device connected but no heart rate data received. Please enable heart rate broadcast mode on the watch.',
+        }), file=sys.stderr, flush=True)
+        return None, 'Device connected but no heart rate data received. Enable heart rate broadcast mode on the watch.'
 
     # If no RR data from characteristic, derive from HR readings
     if not has_rr_data:

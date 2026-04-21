@@ -93,13 +93,20 @@ server.tool(
       "hrv_reader.py",
       [String(duration_seconds)],
       (msg) => {
-        server.sendLoggingMessage(
-          {
-            level: "info",
-            data: `HRV collecting... ${msg.remaining}s remaining (${msg.rr_count} intervals, ${msg.progress}/${msg.total}s elapsed)`,
-          },
-          sessionId
-        );
+        if (msg.error_type) {
+          server.sendLoggingMessage(
+            { level: "warning", data: `[BLE] ${msg.message}` },
+            sessionId
+          );
+        } else {
+          server.sendLoggingMessage(
+            {
+              level: "info",
+              data: `HRV collecting... ${msg.remaining}s remaining (${msg.rr_count} intervals, ${msg.progress}/${msg.total}s elapsed)`,
+            },
+            sessionId
+          );
+        }
       }
     );
     if (result.error) throw new Error(result.error);
