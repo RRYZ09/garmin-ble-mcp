@@ -14,6 +14,7 @@ MCP server for real-time heart rate directly from a Garmin watch via Bluetooth L
 |------|-------------|
 | `get_realtime_heart_rate` | Current BPM from the watch. Averages 3 readings. |
 | `scan_ble_devices` | Scan for nearby BLE devices that expose a heart rate service. |
+| `get_hrv_analysis` | Collect RR intervals and compute HRV: RMSSD, SDNN, LF/HF ratio. Default 120s. |
 
 ## Tested Devices
 
@@ -85,6 +86,7 @@ Add to `~/.claude.json`:
 
 ## Example Output
 
+`get_realtime_heart_rate`:
 ```json
 {
   "device": "vívoactiv",
@@ -94,6 +96,30 @@ Add to `~/.claude.json`:
   "timestamp": "2026-04-21T05:38:48.432788+00:00"
 }
 ```
+
+`get_hrv_analysis`:
+```json
+{
+  "device": "vívoactiv",
+  "duration_seconds": 120,
+  "rr_count": 142,
+  "rr_source": "ble_rr",
+  "time_domain": {
+    "mean_hr_bpm": 68.2,
+    "sdnn_ms": 45.3,
+    "rmssd_ms": 38.1
+  },
+  "frequency_domain": {
+    "lf_power_ms2": 0.0234,
+    "hf_power_ms2": 0.0189,
+    "lf_hf_ratio": 1.24
+  },
+  "interpretation": "balanced",
+  "timestamp": "2026-04-21T05:38:48.432788+00:00"
+}
+```
+
+`rr_source` is `ble_rr` when the watch sends raw RR intervals, or `hr_derived` (less accurate) when approximated from BPM readings.
 
 ## License
 

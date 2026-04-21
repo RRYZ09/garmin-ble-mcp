@@ -54,6 +54,23 @@ server.tool(
   }
 );
 
+server.tool(
+  "get_hrv_analysis",
+  "Collect RR intervals from the Garmin watch over a period and compute HRV metrics: RMSSD, SDNN, LF power, HF power, LF/HF ratio. LF/HF ratio indicates sympathetic/parasympathetic balance (high = stressed, low = relaxed). Requires heart rate broadcast mode on the watch. Default duration is 120 seconds; use at least 60s for meaningful results.",
+  {
+    duration_seconds: z.number().optional().describe(
+      "How long to collect data in seconds (default: 120, minimum recommended: 60)"
+    ),
+  },
+  async ({ duration_seconds = 120 }) => {
+    const result = await runPython("hrv_reader.py", [String(duration_seconds)]);
+    if (result.error) throw new Error(result.error);
+    return {
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+    };
+  }
+);
+
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);

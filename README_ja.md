@@ -12,6 +12,7 @@ GarminウォッチからBluetoothLE経由でリアルタイム心拍数を取得
 |--------|------|
 | `get_realtime_heart_rate` | ウォッチから現在のBPMを取得。3回計測して平均を返す。 |
 | `scan_ble_devices` | 心拍サービスを持つ近くのBLEデバイスをスキャン。 |
+| `get_hrv_analysis` | RR間隔を収集してHRV解析。RMSSD・SDNN・LF/HF比を返す。デフォルト120秒。 |
 
 ## 検証済み機種
 
@@ -83,6 +84,7 @@ bluetoothctl scan on
 
 ## 出力例
 
+`get_realtime_heart_rate`:
 ```json
 {
   "device": "vívoactiv",
@@ -92,6 +94,30 @@ bluetoothctl scan on
   "timestamp": "2026-04-21T05:38:48.432788+00:00"
 }
 ```
+
+`get_hrv_analysis`:
+```json
+{
+  "device": "vívoactiv",
+  "duration_seconds": 120,
+  "rr_count": 142,
+  "rr_source": "ble_rr",
+  "time_domain": {
+    "mean_hr_bpm": 68.2,
+    "sdnn_ms": 45.3,
+    "rmssd_ms": 38.1
+  },
+  "frequency_domain": {
+    "lf_power_ms2": 0.0234,
+    "hf_power_ms2": 0.0189,
+    "lf_hf_ratio": 1.24
+  },
+  "interpretation": "balanced",
+  "timestamp": "2026-04-21T05:38:48.432788+00:00"
+}
+```
+
+`rr_source` は、ウォッチがRR間隔を直接送信している場合 `ble_rr`、BPMから近似した場合 `hr_derived`（精度低め）になります。
 
 ## ライセンス
 
