@@ -150,6 +150,7 @@ def run(duration_seconds=120):
     hr_readings  = []   # fallback: (timestamp, hr_bpm)
     has_rr_data  = False
     deadline = time.time() + duration_seconds
+    last_progress = time.time()
 
     while time.time() < deadline:
         try:
@@ -167,6 +168,19 @@ def run(duration_seconds=120):
             pass
         if proc.poll() is not None:
             break
+
+        now = time.time()
+        if now - last_progress >= 5:
+            elapsed = int(now - (deadline - duration_seconds))
+            remaining = max(0, int(deadline - now))
+            rr_count = len(rr_intervals) if has_rr_data else len(hr_readings)
+            print(json.dumps({
+                'progress': elapsed,
+                'total': duration_seconds,
+                'remaining': remaining,
+                'rr_count': rr_count,
+            }), file=sys.stderr, flush=True)
+            last_progress = now
 
     try:
         send('quit')

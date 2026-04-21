@@ -24,9 +24,34 @@ function runPython(script, args = []) {
   });
 }
 
+function runPythonWithProgress(script, args, onProgress) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("python3", [join(__dir, script), ...args]);
+    let out = "";
+    let errBuf = "";
+    proc.stdout.on("data", (d) => (out += d));
+    proc.stderr.on("data", (d) => {
+      errBuf += d;
+      const lines = errBuf.split("\n");
+      errBuf = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try { onProgress(JSON.parse(line)); } catch {}
+      }
+    });
+    proc.on("close", (code) => {
+      try {
+        resolve(JSON.parse(out.trim()));
+      } catch {
+        reject(new Error(errBuf.trim() || `python3 exited ${code}`));
+      }
+    });
+  });
+}
+
 const server = new McpServer({
   name: "garmin-ble-mcp",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 server.tool(
@@ -62,8 +87,21 @@ server.tool(
       "How long to collect data in seconds (default: 120, minimum recommended: 60)"
     ),
   },
-  async ({ duration_seconds = 120 }) => {
-    const result = await runPython("hrv_reader.py", [String(duration_seconds)]);
+  async ({ duration_seconds = 120 }, extra) => {
+    const sessionId = extra?.sessionId;
+    const result = await runPythonWithProgress(
+      "hrv_reader.py",
+      [String(duration_seconds)],
+      (msg) => {
+        server.sendLoggingMessage(
+          {
+            level: "info",
+            data: `HRV collecting... ${msg.remaining}s remaining (${msg.rr_count} intervals, ${msg.progress}/${msg.total}s elapsed)`,
+          },
+          sessionId
+        );
+      }
+    );
     if (result.error) throw new Error(result.error);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
