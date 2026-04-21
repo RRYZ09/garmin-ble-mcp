@@ -1,5 +1,7 @@
 # garmin-ble-mcp
 
+[日本語版 README はこちら](README_ja.md)
+
 MCP server for real-time heart rate directly from a Garmin watch via Bluetooth LE — no Garmin Connect, no internet, no cloud.
 
 ## Why?
