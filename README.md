@@ -15,6 +15,22 @@ MCP server for real-time heart rate directly from a Garmin watch via Bluetooth L
 | `get_realtime_heart_rate` | Current BPM from the watch. Averages 3 readings. |
 | `scan_ble_devices` | Scan for nearby BLE devices that expose a heart rate service. |
 
+## Tested Devices
+
+| Device | Status |
+|--------|--------|
+| Garmin Vivoactive 5 | ✓ Verified |
+
+## Watch Setup: Heart Rate Broadcast Mode
+
+Before connecting, enable **Heart Rate Broadcast** on the watch:
+
+1. Long-press the **top-right button**
+2. Open **Controls**
+3. Tap **Heart Rate Broadcast**
+
+The watch will start broadcasting heart rate over BLE. You only need to do this once per session.
+
 ## How it works
 
 - `get_realtime_heart_rate` — connects via `gatttool`, writes to both Garmin's proprietary CCCD (handle `0x0013`) and the standard HR Measurement CCCD (handle `0x003b`), then reads HR notifications on handle `0x003a` (characteristic `0x2A37`).
