@@ -10,7 +10,7 @@ HRV metrics:
   Time domain : RMSSD, SDNN, mean HR
   Frequency   : LF power (0.04–0.15 Hz), HF power (0.15–0.4 Hz), LF/HF ratio
 """
-import subprocess, time, threading, queue, json, sys, re
+import subprocess, time, threading, queue, json, sys, re, argparse
 import numpy as np
 from datetime import datetime, UTC
 
@@ -227,9 +227,105 @@ def run(duration_seconds=120):
     }, None
 
 
+def run_bridge(host, duration_seconds=120):
+    """Collect HR data from Android bridge app via WebSocket."""
+    try:
+        import websocket
+    except ImportError:
+        return None, 'websocket-client not installed. Run: pip install websocket-client'
+
+    url = f'ws://{host}:8765'
+    try:
+        ws = websocket.create_connection(url, timeout=10)
+    except Exception as e:
+        return None, f'Cannot connect to bridge at {host}:8765. Is the app running? ({e})'
+
+    rr_intervals = []
+    hr_readings = []
+    has_rr_data = False
+    deadline = time.time() + duration_seconds
+    first_data_deadline = time.time() + 10
+    last_progress = time.time()
+
+    try:
+        while time.time() < deadline:
+            ws.settimeout(0.5)
+            try:
+                msg = json.loads(ws.recv())
+                if msg.get('type') == 'hr':
+                    hr = msg['hr']
+                    rr = msg.get('rr', [])
+                    if 30 <= hr <= 220:
+                        hr_readings.append((time.time(), hr))
+                    if rr:
+                        has_rr_data = True
+                        rr_intervals.extend(rr)
+            except Exception:
+                pass
+
+            if not hr_readings and time.time() > first_data_deadline:
+                print(json.dumps({
+                    'error_type': 'broadcast_not_active',
+                    'message': 'Connected to bridge but no HR data received. Enable heart rate broadcast mode on the watch.',
+                }), file=sys.stderr, flush=True)
+                return None, 'Connected to bridge but no HR data received. Enable heart rate broadcast mode on the watch.'
+
+            now = time.time()
+            if now - last_progress >= 5:
+                elapsed = int(now - (deadline - duration_seconds))
+                remaining = max(0, int(deadline - now))
+                rr_count = len(rr_intervals) if has_rr_data else len(hr_readings)
+                print(json.dumps({
+                    'progress': elapsed,
+                    'total': duration_seconds,
+                    'remaining': remaining,
+                    'rr_count': rr_count,
+                }), file=sys.stderr, flush=True)
+                last_progress = now
+    finally:
+        ws.close()
+
+    if not hr_readings:
+        print(json.dumps({
+            'error_type': 'broadcast_not_active',
+            'message': 'Connected to bridge but no HR data received. Enable heart rate broadcast mode on the watch.',
+        }), file=sys.stderr, flush=True)
+        return None, 'Connected to bridge but no HR data received. Enable heart rate broadcast mode on the watch.'
+
+    if not has_rr_data:
+        rr_intervals = [60000.0 / hr for (_, hr) in hr_readings]
+        rr_source = 'hr_derived'
+    else:
+        rr_source = 'ble_rr'
+
+    if len(rr_intervals) < MIN_RR_COUNT:
+        return None, (
+            f'Not enough data ({len(rr_intervals)} RR intervals). '
+            f'Need at least {MIN_RR_COUNT}. Try a longer duration.'
+        )
+
+    hrv = compute_hrv(rr_intervals)
+    return {
+        'device': 'vívoactiv (bridge)',
+        'duration_seconds': duration_seconds,
+        'rr_count': len(rr_intervals),
+        'rr_source': rr_source,
+        **hrv,
+        'timestamp': datetime.now(UTC).isoformat(),
+    }, None
+
+
 if __name__ == '__main__':
-    duration = int(sys.argv[1]) if len(sys.argv) > 1 else 120
-    result, err = run(duration)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('duration', nargs='?', type=int, default=120)
+    parser.add_argument('--bridge', type=str, help='Android bridge app IP address')
+    args = parser.parse_args()
+
+    if args.bridge:
+        result, err = run_bridge(args.bridge, args.duration)
+    else:
+        result, err = run(args.duration)
+
     if err:
         print(json.dumps({'error': err}))
         sys.exit(1)

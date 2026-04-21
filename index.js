@@ -57,9 +57,14 @@ const server = new McpServer({
 server.tool(
   "get_realtime_heart_rate",
   "Get real-time heart rate directly from a BLE heart rate device (e.g. Garmin watch). Returns current BPM without needing Garmin Connect or internet.",
-  { timeout_seconds: z.number().optional().describe("How long to scan for a device (default: 15s)") },
-  async ({ timeout_seconds = 15 }) => {
-    const result = await runPython("hr_reader.py", [String(timeout_seconds)]);
+  {
+    timeout_seconds: z.number().optional().describe("How long to scan for a device (default: 15s)"),
+    bridge_host: z.string().optional().describe("IP address of Android bridge app (e.g. 192.168.1.5). Use instead of direct BLE."),
+  },
+  async ({ timeout_seconds = 15, bridge_host }) => {
+    const args = [String(timeout_seconds)];
+    if (bridge_host) args.push("--bridge", bridge_host);
+    const result = await runPython("hr_reader.py", args);
     if (result.error) throw new Error(result.error);
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
@@ -86,12 +91,15 @@ server.tool(
     duration_seconds: z.number().optional().describe(
       "How long to collect data in seconds (default: 120, minimum recommended: 60)"
     ),
+    bridge_host: z.string().optional().describe("IP address of Android bridge app (e.g. 192.168.1.5). Use instead of direct BLE."),
   },
-  async ({ duration_seconds = 120 }, extra) => {
+  async ({ duration_seconds = 120, bridge_host }, extra) => {
     const sessionId = extra?.sessionId;
+    const args = [String(duration_seconds)];
+    if (bridge_host) args.push("--bridge", bridge_host);
     const result = await runPythonWithProgress(
       "hrv_reader.py",
-      [String(duration_seconds)],
+      args,
       (msg) => {
         if (msg.error_type) {
           server.sendLoggingMessage(

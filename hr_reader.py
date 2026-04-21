@@ -6,7 +6,7 @@ The watch requires writing to handle 0x0013 (Garmin proprietary CCCD) and
 handle 0x003b (HR Measurement CCCD) in quick succession before sending
 HR notifications on handle 0x003a (HR Measurement characteristic, 0x2A37).
 """
-import subprocess, time, threading, queue, json, sys, re
+import subprocess, time, threading, queue, json, sys, re, argparse
 from datetime import datetime, UTC
 
 ADDR = '64:A3:37:07:83:FD'
@@ -102,9 +102,63 @@ def run(timeout_seconds=15, samples=3):
         'timestamp': datetime.now(UTC).isoformat(),
     }, None
 
+def run_bridge(host, timeout_seconds=15, samples=3):
+    """Get heart rate from Android bridge app via WebSocket."""
+    try:
+        import websocket
+    except ImportError:
+        return None, 'websocket-client not installed. Run: pip install websocket-client'
+
+    url = f'ws://{host}:8765'
+    try:
+        ws = websocket.create_connection(url, timeout=10)
+    except Exception as e:
+        return None, f'Cannot connect to bridge at {host}:8765. Is the app running? ({e})'
+
+    readings = []
+    deadline = time.time() + timeout_seconds
+    first_data_deadline = time.time() + 10
+
+    try:
+        while time.time() < deadline and len(readings) < samples:
+            ws.settimeout(0.5)
+            try:
+                msg = json.loads(ws.recv())
+                if msg.get('type') == 'hr':
+                    hr = msg['hr']
+                    if 30 <= hr <= 220:
+                        readings.append(hr)
+            except Exception:
+                pass
+
+            if not readings and time.time() > first_data_deadline:
+                return None, 'Connected to bridge but no HR data received. Enable heart rate broadcast mode on the watch.'
+    finally:
+        ws.close()
+
+    if not readings:
+        return None, 'Connected to bridge but no HR data received. Enable heart rate broadcast mode on the watch.'
+
+    return {
+        'device': 'vívoactiv (bridge)',
+        'heartRate': readings[-1],
+        'average': round(sum(readings) / len(readings)),
+        'readings': readings,
+        'timestamp': datetime.now(UTC).isoformat(),
+    }, None
+
+
 if __name__ == '__main__':
-    timeout = int(sys.argv[1]) if len(sys.argv) > 1 else 15
-    result, err = run(timeout)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('timeout', nargs='?', type=int, default=15)
+    parser.add_argument('--bridge', type=str, help='Android bridge app IP address')
+    args = parser.parse_args()
+
+    if args.bridge:
+        result, err = run_bridge(args.bridge, args.timeout)
+    else:
+        result, err = run(args.timeout)
+
     if err:
         print(json.dumps({'error': err}))
         sys.exit(1)
