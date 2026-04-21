@@ -1,0 +1,14 @@
+{
+  "name": "garmin-ble-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for real-time heart rate via Bluetooth LE",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@abandonware/noble": "^1.9.2-15",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

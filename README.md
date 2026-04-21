@@ -1,0 +1,82 @@
+# garmin-ble-mcp
+
+MCP server for real-time heart rate directly from a Garmin watch via Bluetooth LE — no Garmin Connect, no internet, no cloud.
+
+## Why?
+
+`garmin-health-mcp` gives you historical data synced to Garmin Connect. This gives you **right now** — current BPM, straight from the watch over BLE.
+
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_realtime_heart_rate` | Current BPM from the watch. Averages 3 readings. |
+| `scan_ble_devices` | Scan for nearby BLE devices that expose a heart rate service. |
+
+## How it works
+
+- `get_realtime_heart_rate` — connects via `gatttool`, writes to both Garmin's proprietary CCCD (handle `0x0013`) and the standard HR Measurement CCCD (handle `0x003b`), then reads HR notifications on handle `0x003a` (characteristic `0x2A37`).
+- `scan_ble_devices` — uses `bleak` to scan for BLE devices with the standard HR service UUID or Garmin manufacturer ID.
+
+The Vivoactive 5 doesn't advertise the HR UUID, so `get_realtime_heart_rate` connects directly by MAC address rather than scanning.
+
+## Requirements
+
+- Linux (uses `gatttool` for HR, `bleak` for scanning)
+- Python 3 with `bleak`: `pip install bleak`
+- `bluez` tools: `sudo apt install bluez`
+- BLE permissions: `sudo setcap 'cap_net_raw,cap_net_admin+eip' $(which python3)` or run as root
+- Node.js 18+
+
+## Setup
+
+```bash
+git clone https://github.com/lifemate-ai/garmin-ble-mcp.git
+cd garmin-ble-mcp
+npm install
+pip install bleak
+```
+
+Update the `ADDR` in `hr_reader.py` to your watch's Bluetooth MAC address:
+
+```python
+ADDR = '64:A3:37:07:83:FD'  # change this to your watch
+```
+
+To find your watch's MAC address:
+
+```bash
+bluetoothctl scan on
+# look for your watch name in the output
+```
+
+## Add to Claude Code
+
+Add to `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "garmin-ble": {
+      "command": "node",
+      "args": ["/path/to/garmin-ble-mcp/index.js"]
+    }
+  }
+}
+```
+
+## Example Output
+
+```json
+{
+  "device": "vívoactiv",
+  "heartRate": 99,
+  "average": 99,
+  "readings": [98, 99, 99],
+  "timestamp": "2026-04-21T05:38:48.432788+00:00"
+}
+```
+
+## License
+
+MIT
