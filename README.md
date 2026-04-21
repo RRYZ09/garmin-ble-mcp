@@ -85,7 +85,7 @@ Add to `~/.claude.json`:
 ```json
 {
   "mcpServers": {
-    "garmin-ble": {
+    "garmin-ble-realtime-heartbeat-mcp": {
       "command": "node",
       "args": ["/path/to/garmin-ble-mcp/index.js"]
     }

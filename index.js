@@ -50,7 +50,7 @@ function runPythonWithProgress(script, args, onProgress) {
 }
 
 const server = new McpServer({
-  name: "garmin-ble-mcp",
+  name: "garmin-ble-realtime-heartbeat-mcp",
   version: "0.3.0",
 });
 

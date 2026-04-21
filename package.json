@@ -1,5 +1,5 @@
 {
-  "name": "garmin-ble-mcp",
+  "name": "garmin-ble-realtime-heartbeat-mcp",
   "version": "0.1.0",
   "description": "MCP server for real-time heart rate via Bluetooth LE",
   "type": "module",
